@@ -2,56 +2,70 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>GO Enrichment Dotplot Demo</title>
+  <title>GO Enrichment Dotplot (Interactive)</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <style>
     body { font-family: sans-serif; padding: 20px; }
-    svg { width: 100%; height: 650px; }
+    #controls { margin-bottom: 20px; }
+    label { margin-right: 8px; }
+    svg { border: 1px solid #ccc; display: block; margin-top: 10px; }
     .tooltip {
       position: absolute;
-      text-align: left;
-      padding: 8px;
-      font-size: 13px;
       background: rgba(0,0,0,0.7);
       color: white;
-      border-radius: 4px;
-      pointer-events: none;
-    }
-    .legend {
+      padding: 6px;
       font-size: 12px;
-    }
-    #exportBtn {
-      margin-top: 10px;
-      padding: 6px 12px;
-      background: #444;
-      color: white;
-      border: none;
+      pointer-events: none;
       border-radius: 4px;
-      cursor: pointer;
     }
   </style>
 </head>
 <body>
   <h1>GO Enrichment Dotplot</h1>
-  <p>Bubble size: gene count · Color: -log10(FDR)</p>
-  <div id="error"></div>
+
+  <div id="controls">
+    <label>Upload CSV:
+      <input type="file" id="fileInput" accept=".csv">
+    </label>
+    <label>Font size:
+      <input type="range" id="fontSize" min="10" max="24" value="12">
+    </label>
+    <label>Color scale:
+      <select id="colorScale">
+        <option value="interpolateRdBu">RdBu</option>
+        <option value="interpolateViridis">Viridis</option>
+        <option value="interpolatePlasma">Plasma</option>
+        <option value="interpolateInferno">Inferno</option>
+        <option value="interpolateMagma">Magma</option>
+      </select>
+    </label>
+    <label>Width:
+      <input type="range" id="chartWidth" min="600" max="1200" value="960">
+    </label>
+    <label>Height:
+      <input type="range" id="chartHeight" min="400" max="1000" value="650">
+    </label>
+  </div>
+
   <svg id="chart"></svg>
-  <button id="exportBtn">📤 Export SVG</button>
-  <div id="tooltip" class="tooltip" style="display: none;"></div>
+  <div class="tooltip" id="tooltip" style="display: none;"></div>
 
   <script>
     const tooltip = d3.select("#tooltip");
+    let currentData = [];
 
-    d3.csv('go_dotplot.csv', d3.autoType).then(data => {
-      if (!data || data.length === 0) {
-        document.getElementById('error').textContent = "Data file is empty or could not be read.";
-        return;
-      }
+    function drawChart(data, config) {
+      currentData = data;
 
       const svg = d3.select("#chart");
-      const width = 960;
-      const height = 650;
+      svg.selectAll("*").remove();
+
+      const width = config.width;
+      const height = config.height;
+      const fontSize = config.fontSize;
       const margin = { top: 40, right: 30, bottom: 60, left: 200 };
+
+      svg.attr("width", width).attr("height", height);
 
       const innerWidth = width - margin.left - margin.right;
       const innerHeight = height - margin.top - margin.bottom;
@@ -71,7 +85,7 @@
 
       const color = d3.scaleSequential()
         .domain(d3.extent(data, d => d["-log10(FDR)"]).reverse())
-        .interpolator(d3.interpolateRdBu);
+        .interpolator(d3[config.colorScale]);
 
       const g = svg.append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
@@ -87,10 +101,10 @@
         .attr('opacity', 0.9)
         .on("mouseover", function (event, d) {
           tooltip.style("display", "block")
-                 .html(`<strong>${d["GO Term"]}</strong><br>
-                        Gene Ratio: ${d["Gene Ratio"]}<br>
-                        Gene Count: ${d["Gene Count"]}<br>
-                        -log10(FDR): ${d["-log10(FDR)"].toFixed(2)}`);
+            .html(`<strong>${d["GO Term"]}</strong><br>
+                   Gene Ratio: ${d["Gene Ratio"]}<br>
+                   Gene Count: ${d["Gene Count"]}<br>
+                   -log10(FDR): ${d["-log10(FDR)"].toFixed(2)}`);
         })
         .on("mousemove", function (event) {
           tooltip.style("left", (event.pageX + 10) + "px")
@@ -100,73 +114,48 @@
           tooltip.style("display", "none");
         });
 
-      g.append('g')
-        .attr('transform', `translate(0,${innerHeight})`)
-        .call(d3.axisBottom(x));
+      g.append("g")
+        .attr("transform", `translate(0,${innerHeight})`)
+        .call(d3.axisBottom(x).tickSizeOuter(0))
+        .selectAll("text")
+        .style("font-size", fontSize + "px");
 
-      g.append('g')
-        .call(d3.axisLeft(y));
+      g.append("g")
+        .call(d3.axisLeft(y))
+        .selectAll("text")
+        .style("font-size", fontSize + "px");
+    }
 
-      const legend = svg.append("g")
-        .attr("transform", `translate(${width - 120},${margin.top})`)
-        .attr("class", "legend");
+    function loadCSVFromFile(file) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const parsed = d3.csvParse(e.target.result, d3.autoType);
+        drawChart(parsed, getConfig());
+      };
+      reader.readAsText(file);
+    }
 
-      const sizeVals = [10, 40, 70];
-      sizeVals.forEach((d, i) => {
-        legend.append("circle")
-          .attr("cy", i * 30)
-          .attr("r", r(d))
-          .attr("fill", "#999")
-          .attr("cx", 0);
-        legend.append("text")
-          .attr("x", 20)
-          .attr("y", i * 30 + 5)
-          .text(`Count: ${d}`);
-      });
+    function getConfig() {
+      return {
+        fontSize: +document.getElementById("fontSize").value,
+        colorScale: document.getElementById("colorScale").value,
+        width: +document.getElementById("chartWidth").value,
+        height: +document.getElementById("chartHeight").value
+      };
+    }
 
-      const defs = svg.append("defs");
-      const linearGradient = defs.append("linearGradient")
-        .attr("id", "color-gradient");
+    document.getElementById("fileInput").addEventListener("change", (e) => {
+      if (e.target.files.length > 0) {
+        loadCSVFromFile(e.target.files[0]);
+      }
+    });
 
-      linearGradient.selectAll("stop")
-        .data([
-          { offset: "0%", color: d3.interpolateRdBu(1) },
-          { offset: "100%", color: d3.interpolateRdBu(0) }
-        ])
-        .enter()
-        .append("stop")
-        .attr("offset", d => d.offset)
-        .attr("stop-color", d => d.color);
+    document.querySelectorAll("#fontSize, #colorScale, #chartWidth, #chartHeight")
+      .forEach(el => el.addEventListener("input", () => drawChart(currentData, getConfig())));
 
-      svg.append("rect")
-        .attr("x", width - 160)
-        .attr("y", height - 50)
-        .attr("width", 120)
-        .attr("height", 10)
-        .style("fill", "url(#color-gradient)");
-
-      svg.append("text")
-        .attr("x", width - 160)
-        .attr("y", height - 55)
-        .text("-log10(FDR)")
-        .style("font-size", "12px");
-
-      document.getElementById("exportBtn").addEventListener("click", () => {
-        const serializer = new XMLSerializer();
-        const source = serializer.serializeToString(svg.node());
-        const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "go_dotplot.svg";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      });
-    }).catch(err => {
-      document.getElementById('error').textContent = "Failed to load or parse CSV: " + err.message;
-      console.error("CSV Load Error:", err);
+    // Load default file
+    d3.csv("go_dotplot.csv", d3.autoType).then(data => {
+      drawChart(data, getConfig());
     });
   </script>
 </body>
