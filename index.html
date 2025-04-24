@@ -30,7 +30,22 @@
     <label>Font size:
       <input type="range" id="fontSize" min="10" max="24" value="12">
     </label>
-    <label>Color scale:
+    
+    <label for="colorScale">Color scale:</label>
+    <select id="colorScale">
+      <option value="interpolateRdBu">RdBu</option>
+      <option value="interpolateViridis">Viridis</option>
+      <option value="interpolatePlasma">Plasma</option>
+      <option value="interpolateInferno">Inferno</option>
+      <option value="interpolateMagma">Magma</option>
+      <option value="RedBlueClassic">Red-Blue Classic</option>
+      <option value="Custom">Custom</option>
+    </select>
+    <span id="customColorInputs" style="display: none;">
+      Start: <input type="color" id="startColor" value="#ff0000">
+      End: <input type="color" id="endColor" value="#0000ff">
+    </span>
+    
       <select id="colorScale">
         <option value="interpolateRdBu">RdBu</option>
         <option value="interpolateViridis">Viridis</option>
@@ -189,7 +204,13 @@
 
     // Load default file
     d3.csv("go_dotplot.csv", d3.autoType).then(data => {
+      
+    if (data && data.length > 0) {
       drawChart(data, getConfig());
+    } else {
+      document.querySelector("#chart").innerHTML = "<text x='50' y='50' font-size='16'>Error: No data loaded</text>";
+    }
+    
     });
   </script>
 </body>
