@@ -24,34 +24,6 @@
   <h1>GO Enrichment Dotplot</h1>
 
   <div id="controls">
-    <br>
-    <fieldset style="margin-top: 10px; padding: 10px; border: 1px solid #ccc;">
-      <legend><strong>Filter Options</strong></legend>
-      <label>Gene Count:
-        <input type="range" id="minCount" min="0" max="100" value="0" step="1">
-        to
-        <input type="range" id="maxCount" min="0" max="100" value="80" step="1">
-      </label><br>
-      <label>Gene Ratio:
-        <input type="range" id="minRatio" min="0" max="1" value="0" step="0.01">
-        to
-        <input type="range" id="maxRatio" min="0" max="1" value="0.05" step="0.01">
-      </label><br>
-      <label>-log10(FDR):
-        <input type="range" id="minFDR" min="0" max="10" value="0" step="0.1">
-        to
-        <input type="range" id="maxFDR" min="0" max="10" value="4" step="0.1">
-      </label><br>
-    </fieldset>
-    <label>
-      <input type="checkbox" id="showLegends" checked>
-      Show legends
-    </label>
-    <label>
-      <input type="checkbox" id="moveLegend">
-      Move size legend to bottom
-    </label>
-
     <label>Upload CSV:
       <input type="file" id="fileInput" accept=".csv">
     </label>
@@ -97,28 +69,6 @@
     function drawChart(data, config) {
       currentData = data;
 
-      const filteredData = data.filter(d =>
-        d["Gene Count"] >= +document.getElementById("minCount").value &&
-        d["Gene Count"] <= +document.getElementById("maxCount").value &&
-        d["Gene Ratio"] >= +document.getElementById("minRatio").value &&
-        d["Gene Ratio"] <= +document.getElementById("maxRatio").value &&
-        d["-log10(FDR)"] >= +document.getElementById("minFDR").value &&
-        d["-log10(FDR)"] <= +document.getElementById("maxFDR").value
-      );
-      
-      const data = filteredData;
-      if (data.length === 0) {
-        svg.append("text")
-          .attr("x", 100)
-          .attr("y", 100)
-          .text("No data available in selected filter range.")
-          .style("font-size", "16px")
-          .style("fill", "red");
-        return;
-      }
-    
-
-
       const svg = d3.select("#chart");
       svg.selectAll("*").remove();
 
@@ -149,13 +99,18 @@
       let color;
       if (config.colorScale === "RedBlueClassic") {
         color = d3.scaleLinear()
-          .domain(d3.extent(data, d => d["-log10(FDR)"]))
+          .domain(d3.extent(data, d => d["-log10(FDR)"]) || [0, 1])
           .range(["red", "blue"]);
       } else if (config.colorScale === "Custom") {
-        const start = document.getElementById("startColor").value;
+        
+        const startEl = document.getElementById("startColor");
+        const endEl = document.getElementById("endColor");
+        const start = startEl ? startEl.value : "#ff0000";
+        const end = endEl ? endEl.value : "#0000ff";
+    
         const end = document.getElementById("endColor").value;
         color = d3.scaleLinear()
-          .domain(d3.extent(data, d => d["-log10(FDR)"]))
+          .domain(d3.extent(data, d => d["-log10(FDR)"]) || [0, 1])
           .range([start, end]);
       } else {
         color = d3.scaleSequential()
@@ -248,8 +203,7 @@
 </script>
 
 <script>
-
-document.querySelectorAll("#minCount, #maxCount, #minRatio, #maxRatio, #minFDR, #maxFDR, #showLegends, #moveLegend")
-  .forEach(el => el.addEventListener("input", () => drawChart(currentData, getConfig())));
-
+  document.addEventListener("DOMContentLoaded", function () {
+    setTimeout(() => drawChart(currentData, getConfig()), 100);
+  });
 </script>
