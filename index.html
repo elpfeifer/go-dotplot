@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>GO Enrichment Dotplot Demo</title>
+  <title>GO Enrichment Dotplot</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <style>
     body { font-family: sans-serif; padding: 20px; }
@@ -11,25 +11,65 @@
 </head>
 <body>
   <h1>GO Enrichment Dotplot</h1>
-  <p>This is a placeholder static example. Full integration with RAWGraphs requires the full framework, but this demonstrates your custom chart code with sample data.</p>
+  <p>This plot visualizes GO enrichment terms, showing gene ratio (x), term (y), gene count (circle size), and significance (color).</p>
   <svg id="chart"></svg>
 
-  <script type="module">
-    import chart from './dotplotChart.js';
+  <script>
+    d3.csv("go_dotplot.csv").then(function(data) {
+      data.forEach(d => {
+        d['Gene Ratio'] = +d['Gene Ratio'];
+        d['Gene Count'] = +d['Gene Count'];
+        d['-log10(FDR)'] = +d['-log10(FDR)'];
+      });
 
-    const data = await d3.csv('go_dotplot.csv', d3.autoType);
+      const margin = { top: 40, right: 30, bottom: 40, left: 200 };
+      const width = 960;
+      const height = 600;
+      const innerWidth = width - margin.left - margin.right;
+      const innerHeight = height - margin.top - margin.bottom;
 
-    const svg = d3.select("#chart");
-    const width = 960;
-    const height = 600;
-    svg.attr("width", width).attr("height", height);
+      const svg = d3.select("#chart")
+        .attr("width", width)
+        .attr("height", height);
 
-    const chartContext = {
-      chartDimensions: { width, height }
-    };
+      const x = d3.scaleLinear()
+        .domain([0, d3.max(data, d => d['Gene Ratio'])]).nice()
+        .range([0, innerWidth]);
 
-    const g = svg.append("g");
-    chart.draw(g, data, chart.dimensions, chartContext);
+      const y = d3.scaleBand()
+        .domain(data.map(d => d['GO Term']))
+        .range([0, innerHeight])
+        .padding(0.3);
+
+      const r = d3.scaleSqrt()
+        .domain(d3.extent(data, d => d['Gene Count']))
+        .range([4, 18]);
+
+      const color = d3.scaleSequential()
+        .domain(d3.extent(data, d => d['-log10(FDR)']).reverse())
+        .interpolator(d3.interpolateRdBu);
+
+      const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+      // Axes
+      g.append("g")
+        .attr("transform", `translate(0,${innerHeight})`)
+        .call(d3.axisBottom(x));
+
+      g.append("g")
+        .call(d3.axisLeft(y));
+
+      // Circles
+      g.selectAll("circle")
+        .data(data)
+        .enter()
+        .append("circle")
+        .attr("cx", d => x(d['Gene Ratio']))
+        .attr("cy", d => y(d['GO Term']) + y.bandwidth() / 2)
+        .attr("r", d => r(d['Gene Count']))
+        .attr("fill", d => color(d['-log10(FDR)']))
+        .attr("opacity", 0.9);
+    });
   </script>
 </body>
 </html>
