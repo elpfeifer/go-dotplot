@@ -24,6 +24,34 @@
   <h1>GO Enrichment Dotplot</h1>
 
   <div id="controls">
+    <br>
+    <fieldset style="margin-top: 10px; padding: 10px; border: 1px solid #ccc;">
+      <legend><strong>Filter Options</strong></legend>
+      <label>Gene Count:
+        <input type="range" id="minCount" min="0" max="100" value="0" step="1">
+        to
+        <input type="range" id="maxCount" min="0" max="100" value="100" step="1">
+      </label><br>
+      <label>Gene Ratio:
+        <input type="range" id="minRatio" min="0" max="1" value="0" step="0.01">
+        to
+        <input type="range" id="maxRatio" min="0" max="1" value="1" step="0.01">
+      </label><br>
+      <label>-log10(FDR):
+        <input type="range" id="minFDR" min="0" max="10" value="0" step="0.1">
+        to
+        <input type="range" id="maxFDR" min="0" max="10" value="10" step="0.1">
+      </label><br>
+    </fieldset>
+    <label>
+      <input type="checkbox" id="showLegends" checked>
+      Show legends
+    </label>
+    <label>
+      <input type="checkbox" id="moveLegend">
+      Move size legend to bottom
+    </label>
+
     <label>Upload CSV:
       <input type="file" id="fileInput" accept=".csv">
     </label>
@@ -68,6 +96,17 @@
 
     function drawChart(data, config) {
       currentData = data;
+
+      const filteredData = data.filter(d =>
+        d["Gene Count"] >= +document.getElementById("minCount").value &&
+        d["Gene Count"] <= +document.getElementById("maxCount").value &&
+        d["Gene Ratio"] >= +document.getElementById("minRatio").value &&
+        d["Gene Ratio"] <= +document.getElementById("maxRatio").value &&
+        d["-log10(FDR)"] >= +document.getElementById("minFDR").value &&
+        d["-log10(FDR)"] <= +document.getElementById("maxFDR").value
+      );
+      const data = filteredData;
+
 
       const svg = d3.select("#chart");
       svg.selectAll("*").remove();
@@ -195,4 +234,11 @@
     const showCustom = this.value === "Custom";
     document.getElementById("customColorInputs").style.display = showCustom ? "inline-block" : "none";
   });
+</script>
+
+<script>
+
+document.querySelectorAll("#minCount, #maxCount, #minRatio, #maxRatio, #minFDR, #maxFDR, #showLegends, #moveLegend")
+  .forEach(el => el.addEventListener("input", () => drawChart(currentData, getConfig())));
+
 </script>
