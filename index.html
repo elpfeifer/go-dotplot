@@ -37,6 +37,18 @@
         <option value="interpolatePlasma">Plasma</option>
         <option value="interpolateInferno">Inferno</option>
         <option value="interpolateMagma">Magma</option>
+        <option value="RedBlueClassic">Red-Blue Classic</option>
+        <option value="Custom">Custom</option>
+      </select>
+      <label id="customColorInputs" style="display: none;">
+        Start color: <input type="color" id="startColor" value="#ff0000">
+        End color: <input type="color" id="endColor" value="#0000ff">
+      </label>
+        <option value="interpolateRdBu">RdBu</option>
+        <option value="interpolateViridis">Viridis</option>
+        <option value="interpolatePlasma">Plasma</option>
+        <option value="interpolateInferno">Inferno</option>
+        <option value="interpolateMagma">Magma</option>
       </select>
     </label>
     <label>Width:
@@ -83,7 +95,24 @@
         .domain(d3.extent(data, d => d["Gene Count"]))
         .range([4, 18]);
 
-      const color = d3.scaleSequential()
+      
+      let color;
+      if (config.colorScale === "RedBlueClassic") {
+        color = d3.scaleLinear()
+          .domain(d3.extent(data, d => d["-log10(FDR)"]))
+          .range(["red", "blue"]);
+      } else if (config.colorScale === "Custom") {
+        const start = document.getElementById("startColor").value;
+        const end = document.getElementById("endColor").value;
+        color = d3.scaleLinear()
+          .domain(d3.extent(data, d => d["-log10(FDR)"]))
+          .range([start, end]);
+      } else {
+        color = d3.scaleSequential()
+          .domain(d3.extent(data, d => d["-log10(FDR)"]).reverse())
+          .interpolator(d3[config.colorScale]);
+      }
+    
         .domain(d3.extent(data, d => d["-log10(FDR)"]).reverse())
         .interpolator(d3[config.colorScale]);
 
@@ -150,7 +179,7 @@
       }
     });
 
-    document.querySelectorAll("#fontSize, #colorScale, #chartWidth, #chartHeight")
+    document.querySelectorAll("#fontSize, #colorScale, #chartWidth, #chartHeight, #startColor, #endColor")
       .forEach(el => el.addEventListener("input", () => drawChart(currentData, getConfig())));
 
     // Load default file
@@ -160,3 +189,10 @@
   </script>
 </body>
 </html>
+
+<script>
+  document.getElementById("colorScale").addEventListener("change", function () {
+    const showCustom = this.value === "Custom";
+    document.getElementById("customColorInputs").style.display = showCustom ? "inline-block" : "none";
+  });
+</script>
