@@ -30,17 +30,17 @@
       <label>Gene Count:
         <input type="range" id="minCount" min="0" max="100" value="0" step="1">
         to
-        <input type="range" id="maxCount" min="0" max="100" value="100" step="1">
+        <input type="range" id="maxCount" min="0" max="100" value="80" step="1">
       </label><br>
       <label>Gene Ratio:
         <input type="range" id="minRatio" min="0" max="1" value="0" step="0.01">
         to
-        <input type="range" id="maxRatio" min="0" max="1" value="1" step="0.01">
+        <input type="range" id="maxRatio" min="0" max="1" value="0.05" step="0.01">
       </label><br>
       <label>-log10(FDR):
         <input type="range" id="minFDR" min="0" max="10" value="0" step="0.1">
         to
-        <input type="range" id="maxFDR" min="0" max="10" value="10" step="0.1">
+        <input type="range" id="maxFDR" min="0" max="10" value="4" step="0.1">
       </label><br>
     </fieldset>
     <label>
@@ -105,7 +105,18 @@
         d["-log10(FDR)"] >= +document.getElementById("minFDR").value &&
         d["-log10(FDR)"] <= +document.getElementById("maxFDR").value
       );
+      
       const data = filteredData;
+      if (data.length === 0) {
+        svg.append("text")
+          .attr("x", 100)
+          .attr("y", 100)
+          .text("No data available in selected filter range.")
+          .style("font-size", "16px")
+          .style("fill", "red");
+        return;
+      }
+    
 
 
       const svg = d3.select("#chart");
